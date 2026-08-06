@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Walkthrough Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap');
+  :root {
+    --bg:#14181F; --panel:#1B2230; --panel-2:#1F2635; --border:#2A3245; --border-hover:#3A4356;
+    --brass:#C9A227; --sage:#7C9885; --rust:#B5673A;
+    --text:#F5F2EA; --text-dim:#C7CCD8; --text-mute:#8B93A5; --text-faint:#5A6274;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; -webkit-font-smoothing:antialiased; }
+  .font-display { font-family:'Fraunces',serif; }
+  .wrap { max-width:780px; margin:0 auto; padding:48px 20px 80px; }
+  .eyebrow { font-size:11px; text-transform:uppercase; letter-spacing:0.18em; color:var(--brass); margin-bottom:10px; }
+  h1 { font-family:'Fraunces',serif; font-weight:500; font-size:32px; line-height:1.15; margin:0 0 10px; }
+  .lede { color:var(--text-mute); font-size:14px; line-height:1.6; max-width:540px; margin:0 0 32px; }
+  h2 { font-size:13px; font-weight:600; margin:0 0 4px; }
+  .section-hint { font-size:12px; color:var(--text-faint); margin:0 0 14px; }
+  section { margin-bottom:36px; }
+
+  .dropzone { border:1.5px dashed var(--border-hover); border-radius:10px; padding:28px 20px; text-align:center; cursor:pointer; transition:border-color .15s,background .15s; }
+  .dropzone:hover, .dropzone.drag { border-color:var(--brass); background:rgba(201,162,39,.05); }
+  .dropzone svg { color:var(--text-faint); margin-bottom:10px; }
+  .dropzone-label { font-size:13px; color:var(--text-dim); margin-bottom:4px; }
+  .dropzone-sub { font-size:12px; color:var(--text-faint); }
+  input[type="file"] { display:none; }
+
+  .room-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:10px; }
+  .room-card { border:1px solid var(--border); border-radius:8px; overflow:hidden; background:var(--panel); }
+  .room-thumb { height:84px; width:100%; object-fit:cover; display:block; background:#0F1319; }
+  .room-meta { padding:6px 8px; }
+  .room-top-row { display:flex; align-items:center; gap:4px; margin-bottom:4px; }
+  .room-index { font-size:11px; color:var(--text-faint); min-width:14px; }
+  .room-name-input { flex:1; background:none; border:none; color:var(--text-dim); font-size:11px; font-family:inherit; padding:2px 3px; border-radius:3px; min-width:0; }
+  .room-name-input:focus { outline:1px solid var(--brass); background:var(--panel-2); }
+  .pin-badge { font-size:9px; color:var(--sage); }
+  .room-actions { display:flex; gap:2px; justify-content:flex-end; }
+  .icon-btn { background:none; border:none; color:var(--text-faint); cursor:pointer; padding:3px; display:flex; align-items:center; border-radius:4px; }
+  .icon-btn:hover { color:var(--text); background:var(--panel-2); }
+  .icon-btn:disabled { opacity:.25; cursor:default; }
+  .icon-btn:disabled:hover { background:none; color:var(--text-faint); }
+
+  .settings-panel { border:1px solid var(--border); border-radius:10px; padding:18px 20px; background:var(--panel); }
+  .setting-row { display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--border); gap:12px; }
+  .setting-row:last-child { border-bottom:none; }
+  .setting-label { font-size:13px; color:var(--text-dim); flex-shrink:0; }
+  .setting-value { font-size:12px; color:var(--brass); font-variant-numeric:tabular-nums; }
+  input[type="range"] { width:130px; accent-color:var(--brass); }
+  .setting-control { display:flex; align-items:center; gap:10px; }
+  textarea.prompt-input {
+    width:100%; background:var(--panel-2); border:1px solid var(--border); border-radius:6px;
+    color:var(--text-dim); font-family:inherit; font-size:12px; padding:8px; resize:vertical; min-height:52px;
+  }
+  textarea.prompt-input:focus { outline:1px solid var(--brass); }
+
+  .btn-primary { display:inline-flex; align-items:center; gap:8px; background:var(--brass); color:#161B24; border:none; padding:12px 22px; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; font-family:inherit; }
+  .btn-primary:hover { opacity:.92; }
+  .btn-primary:disabled { opacity:.4; cursor:default; }
+  .btn-secondary { display:inline-flex; align-items:center; gap:8px; background:transparent; color:var(--text-dim); border:1px solid var(--border); padding:12px 22px; border-radius:8px; font-size:14px; font-weight:500; cursor:pointer; font-family:inherit; }
+  .btn-secondary:hover { border-color:var(--border-hover); color:var(--text); }
+  .btn-small { padding:7px 14px; font-size:12px; border-radius:6px; }
+
+  .output-panel { border:1px solid var(--border); border-radius:10px; padding:20px; background:var(--panel); }
+  .empty-state { font-size:13px; color:var(--text-faint); }
+  #resultVideo { width:100%; border-radius:6px; display:block; background:#0F1319; }
+  .progress-track { height:4px; background:var(--border); border-radius:2px; margin:14px 0 8px; overflow:hidden; }
+  .progress-fill { height:100%; background:var(--brass); width:0%; transition:width .4s ease; }
+  .progress-label { font-size:12px; color:var(--text-mute); display:flex; justify-content:space-between; }
+  .output-actions { display:flex; gap:10px; margin-top:16px; }
+  .error-box { font-size:12px; color:var(--rust); background:rgba(181,103,58,.1); border:1px solid rgba(181,103,58,.3); border-radius:6px; padding:10px 12px; }
+  .warning { font-size:12px; color:var(--rust); background:rgba(181,103,58,.1); border:1px solid rgba(181,103,58,.3); border-radius:6px; padding:10px 12px; margin-bottom:20px; }
+
+  .floorplan-panel { border:1px solid var(--border); border-radius:10px; padding:18px; background:var(--panel); }
+  .floorplan-toolbar { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
+  .floorplan-status { font-size:12px; color:var(--text-mute); }
+  .floorplan-status .accent { color:var(--brass); }
+  .canvas-wrap { position:relative; border-radius:6px; overflow:hidden; background:#0F1319; }
+  #fpCanvas { width:100%; height:auto; display:block; cursor:crosshair; }
+  .fp-toggle-row { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
+  .fp-toggle { font-size:12px; padding:7px 12px; border-radius:6px; border:1px solid var(--border); background:var(--panel-2); color:var(--text-dim); cursor:pointer; font-family:inherit; }
+  .fp-toggle.active { border-color:var(--brass); color:var(--brass); background:rgba(201,162,39,.08); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="eyebrow">Walkthrough Studio</div>
+  <h1 class="font-display">Photos in.<br/>One AI-generated walkthrough out.</h1>
+  <p class="lede">Upload room photos, place them on your floor plan so the walking order is right, then generate real AI camera motion through each room and doorway via Higgsfield.</p>
+
+  <div class="warning" id="configWarning" style="display:none;"></div>
+
+  <section>
+    <h2>1. Add room photos</h2>
+    <p class="section-hint">JPG or PNG. Click a room's name to relabel it.</p>
+    <div class="dropzone" id="dropzone">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      <div class="dropzone-label">Click to choose photos, or drag them here</div>
+      <div class="dropzone-sub">You can reorder manually or use the floor plan below</div>
+      <input type="file" id="fileInput" accept="image/*" multiple />
+    </div>
+  </section>
+
+  <section id="roomSection" style="display:none;">
+    <h2>2. Rooms</h2>
+    <p class="section-hint">This order is what the video will follow.</p>
+    <div class="room-grid" id="roomGrid"></div>
+  </section>
+
+  <section id="floorplanSection" style="display:none;">
+    <h2>3. Place rooms on your floor plan <span style="color:var(--text-faint); font-weight:400;">(optional)</span></h2>
+    <p class="section-hint">Upload a floor plan, tap where each labeled room sits, then optionally connect rooms that share a doorway for the most accurate walking order.</p>
+    <div id="fpUploadWrap" class="dropzone" style="padding:22px;">
+      <div class="dropzone-label">Click to upload a floor plan image</div>
+      <div class="dropzone-sub">Skip this if you'd rather just drag-reorder the rooms above</div>
+      <input type="file" id="fpFileInput" accept="image/*" />
+    </div>
+    <div id="fpEditorWrap" style="display:none;">
+      <div class="floorplan-panel">
+        <div class="floorplan-toolbar">
+          <span class="floorplan-status" id="fpStatus">Tap the floor plan to place: <span class="accent" id="fpNextRoom">—</span></span>
+          <button class="btn-secondary btn-small" id="fpReplaceBtn">Replace floor plan</button>
+        </div>
+        <div class="canvas-wrap"><canvas id="fpCanvas"></canvas></div>
+        <div class="fp-toggle-row">
+          <button class="fp-toggle" id="fpPlaceMode">Place rooms</button>
+          <button class="fp-toggle" id="fpConnectMode">Connect doorways</button>
+          <button class="fp-toggle" id="fpEntryMode">Set starting room</button>
+          <button class="fp-toggle" id="fpClearConnections">Clear connections</button>
+        </div>
+      </div>
+      <div style="margin-top:14px;"><button class="btn-primary" id="fpAutoOrderBtn" disabled>Auto-arrange walkthrough order</button></div>
+    </div>
+  </section>
+
+  <section id="settingsSection" style="display:none;">
+    <h2>4. Motion & pacing</h2>
+    <div class="settings-panel">
+      <div class="setting-row">
+        <span class="setting-label">Seconds per room</span>
+        <div class="setting-control"><input type="range" id="roomDuration" min="3" max="10" step="1" value="5" /><span class="setting-value" id="roomDurationVal">5s</span></div>
+      </div>
+      <div class="setting-row">
+        <span class="setting-label">Transition length</span>
+        <div class="setting-control"><input type="range" id="transDuration" min="2" max="5" step="1" value="3" /><span class="setting-value" id="transDurationVal">3s</span></div>
+      </div>
+      <div class="setting-row" style="display:block;">
+        <span class="setting-label" style="display:block; margin-bottom:6px;">Room motion style (sent to Higgsfield as the prompt)</span>
+        <textarea class="prompt-input" id="roomPrompt">Smooth drone-style camera glide through the room, gentle forward and slight downward motion, cinematic real estate walkthrough, photorealistic, no distortion</textarea>
+      </div>
+      <div class="setting-row" style="display:block; border-bottom:none;">
+        <span class="setting-label" style="display:block; margin-bottom:6px;">Doorway transition style</span>
+        <textarea class="prompt-input" id="transPrompt">Camera smoothly continues moving forward through the doorway from one room into the next, seamless continuous motion, cinematic real estate walkthrough</textarea>
+      </div>
+    </div>
+  </section>
+
+  <section id="generateSection" style="display:none;">
+    <h2>5. Generate</h2>
+    <p class="section-hint" id="generateHint">Ready when you are. This calls Higgsfield for each room and transition, so it can take a few minutes and will use your API credits.</p>
+    <button class="btn-primary" id="generateBtn">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+      Generate walkthrough
+    </button>
+  </section>
+
+  <section id="outputSection">
+    <h2>Output</h2>
+    <div class="output-panel">
+      <div class="empty-state" id="outputEmpty">Your video will appear here once you generate it.</div>
+      <div id="progressWrap" style="display:none;">
+        <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+        <div class="progress-label"><span id="progressStage">Starting…</span><span id="progressPct">0%</span></div>
+      </div>
+      <div id="errorWrap" style="display:none;" class="error-box"></div>
+      <video id="resultVideo" controls style="display:none;"></video>
+      <div class="output-actions" id="outputActions" style="display:none;">
+        <a class="btn-primary" id="downloadBtn" download="walkthrough.mp4" target="_blank">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download video
+        </a>
+        <button class="btn-secondary" id="startOverBtn">Start over</button>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  let rooms = []; // { id, url, file, name, pin }
+  let nextId = 1;
+  let isGenerating = false;
+  let pollTimer = null;
+
+  let fpImg = null;
+  let fpEdges = [];
+  let fpEntryId = null;
+  let fpMode = 'place';
+  let fpConnectSelection = null;
+
+  const fileInput = document.getElementById('fileInput');
+  const dropzone = document.getElementById('dropzone');
+  const roomSection = document.getElementById('roomSection');
+  const roomGrid = document.getElementById('roomGrid');
+  const floorplanSection = document.getElementById('floorplanSection');
+  const settingsSection = document.getElementById('settingsSection');
+  const generateSection = document.getElementById('generateSection');
+  const generateBtn = document.getElementById('generateBtn');
+  const generateHint = document.getElementById('generateHint');
+  const configWarning = document.getElementById('configWarning');
+
+  const fpUploadWrap = document.getElementById('fpUploadWrap');
+  const fpFileInput = document.getElementById('fpFileInput');
+  const fpEditorWrap = document.getElementById('fpEditorWrap');
+  const fpCanvas = document.getElementById('fpCanvas');
+  const fpCtx = fpCanvas.getContext('2d');
+  const fpStatus = document.getElementById('fpStatus');
+  const fpNextRoom = document.getElementById('fpNextRoom');
+  const fpReplaceBtn = document.getElementById('fpReplaceBtn');
+  const fpPlaceModeBtn = document.getElementById('fpPlaceMode');
+  const fpConnectModeBtn = document.getElementById('fpConnectMode');
+  const fpEntryModeBtn = document.getElementById('fpEntryMode');
+  const fpClearConnectionsBtn = document.getElementById('fpClearConnections');
+  const fpAutoOrderBtn = document.getElementById('fpAutoOrderBtn');
+
+  const roomDurationInput = document.getElementById('roomDuration');
+  const roomDurationVal = document.getElementById('roomDurationVal');
+  const transDurationInput = document.getElementById('transDuration');
+  const transDurationVal = document.getElementById('transDurationVal');
+  const roomPromptInput = document.getElementById('roomPrompt');
+  const transPromptInput = document.getElementById('transPrompt');
+
+  const outputEmpty = document.getElementById('outputEmpty');
+  const progressWrap = document.getElementById('progressWrap');
+  const progressFill = document.getElementById('progressFill');
+  const progressStage = document.getElementById('progressStage');
+  const progressPct = document.getElementById('progressPct');
+  const errorWrap = document.getElementById('errorWrap');
+  const resultVideo = document.getElementById('resultVideo');
+  const outputActions = document.getElementById('outputActions');
+  const downloadBtn = document.getElementById('downloadBtn');
+  const startOverBtn = document.getElementById('startOverBtn');
+
+  fetch('/health').catch(() => {
+    configWarning.style.display = 'block';
+    configWarning.textContent = "Can't reach the backend server. Make sure it's deployed and running, and that you're opening this page from the server's own URL (not as a local file).";
+  });
+
+  // ================= ROOM UPLOAD =================
+  dropzone.addEventListener('click', () => fileInput.click());
+  dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('drag'); });
+  dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag'));
+  dropzone.addEventListener('drop', (e) => { e.preventDefault(); dropzone.classList.remove('drag'); handleFiles(e.dataTransfer.files); });
+  fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+
+  function handleFiles(fileList) {
+    const files = Array.from(fileList).filter((f) => f.type.startsWith('image/'));
+    files.forEach((file) => {
+      const url = URL.createObjectURL(file);
+      rooms.push({ id: nextId++, url, file, name: file.name.replace(/\.[^.]+$/, ''), pin: null });
+    });
+    renderRoomList();
+    updateVisibleSections();
+    updateGenerateState();
+  }
+
+  function updateVisibleSections() {
+    const has = rooms.length > 0;
+    roomSection.style.display = has ? 'block' : 'none';
+    floorplanSection.style.display = has ? 'block' : 'none';
+    settingsSection.style.display = has ? 'block' : 'none';
+    generateSection.style.display = has ? 'block' : 'none';
+    updateFpStatus();
+  }
+
+  function renderRoomList() {
+    roomGrid.innerHTML = '';
+    rooms.forEach((room, i) => {
+      const card = document.createElement('div');
+      card.className = 'room-card';
+      const thumb = document.createElement('img');
+      thumb.className = 'room-thumb';
+      thumb.src = room.url;
+      card.appendChild(thumb);
+
+      const meta = document.createElement('div');
+      meta.className = 'room-meta';
+      const topRow = document.createElement('div');
+      topRow.className = 'room-top-row';
+      const idx = document.createElement('span');
+      idx.className = 'room-index';
+      idx.textContent = (i + 1) + '.';
+      topRow.appendChild(idx);
+      const nameInput = document.createElement('input');
+      nameInput.className = 'room-name-input';
+      nameInput.value = room.name;
+      nameInput.addEventListener('input', () => { room.name = nameInput.value; updateFpStatus(); });
+      topRow.appendChild(nameInput);
+      meta.appendChild(topRow);
+
+      const bottomRow = document.createElement('div');
+      bottomRow.style.display = 'flex';
+      bottomRow.style.alignItems = 'center';
+      bottomRow.style.justifyContent = 'space-between';
+      const pinBadge = document.createElement('span');
+      pinBadge.className = 'pin-badge';
+      pinBadge.textContent = room.pin ? 'Placed on plan' : '';
+      bottomRow.appendChild(pinBadge);
+
+      const actions = document.createElement('div');
+      actions.className = 'room-actions';
+      const upBtn = iconButton('M12 19V5M5 12l7-7 7 7', () => moveRoom(i, -1));
+      upBtn.disabled = i === 0;
+      const downBtn = iconButton('M12 5v14M19 12l-7 7-7-7', () => moveRoom(i, 1));
+      downBtn.disabled = i === rooms.length - 1;
+      const removeBtn = iconButton('M18 6L6 18M6 6l12 12', () => removeRoom(i));
+      actions.appendChild(upBtn); actions.appendChild(downBtn); actions.appendChild(removeBtn);
+      bottomRow.appendChild(actions);
+      meta.appendChild(bottomRow);
+      card.appendChild(meta);
+      roomGrid.appendChild(card);
+    });
+  }
+
+  function iconButton(pathD, onClick) {
+    const btn = document.createElement('button');
+    btn.className = 'icon-btn';
+    btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="' + pathD + '"/></svg>';
+    btn.addEventListener('click', onClick);
+    return btn;
+  }
+
+  function moveRoom(index, delta) {
+    const target = index + delta;
+    if (target < 0 || target >= rooms.length) return;
+    const tmp = rooms[index]; rooms[index] = rooms[target]; rooms[target] = tmp;
+    renderRoomList();
+  }
+
+  function removeRoom(index) {
+    const room = rooms[index];
+    fpEdges = fpEdges.filter(([a, b]) => a !== room.id && b !== room.id);
+    if (fpEntryId === room.id) fpEntryId = null;
+    rooms.splice(index, 1);
+    renderRoomList();
+    updateVisibleSections();
+    updateGenerateState();
+    drawFloorplan();
+  }
+
+  // ================= FLOOR PLAN =================
+  fpUploadWrap.addEventListener('click', () => fpFileInput.click());
+  fpReplaceBtn.addEventListener('click', () => fpFileInput.click());
+  fpFileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file || !file.type.startsWith('image/')) return;
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      fpImg = img;
+      rooms.forEach((r) => { r.pin = null; });
+      fpEdges = []; fpEntryId = null;
+      fpUploadWrap.style.display = 'none';
+      fpEditorWrap.style.display = 'block';
+      setFpMode('place');
+      sizeFpCanvas();
+      drawFloorplan();
+      renderRoomList();
+    };
+    img.src = url;
+  });
+
+  function sizeFpCanvas() {
+    if (!fpImg) return;
+    const displayWidth = fpCanvas.parentElement.clientWidth;
+    const scale = displayWidth / fpImg.naturalWidth;
+    fpCanvas.width = fpImg.naturalWidth;
+    fpCanvas.height = fpImg.naturalHeight;
+    fpCanvas.style.width = displayWidth + 'px';
+    fpCanvas.style.height = Math.round(fpImg.naturalHeight * scale) + 'px';
+  }
+  window.addEventListener('resize', () => { if (fpImg) { sizeFpCanvas(); drawFloorplan(); } });
+
+  fpPlaceModeBtn.addEventListener('click', () => setFpMode('place'));
+  fpConnectModeBtn.addEventListener('click', () => setFpMode('connect'));
+  fpEntryModeBtn.addEventListener('click', () => setFpMode('entry'));
+  fpClearConnectionsBtn.addEventListener('click', () => { fpEdges = []; drawFloorplan(); updateAutoOrderState(); });
+
+  function setFpMode(mode) {
+    fpMode = mode;
+    fpConnectSelection = null;
+    [fpPlaceModeBtn, fpConnectModeBtn, fpEntryModeBtn].forEach((b) => b.classList.remove('active'));
+    if (mode === 'place') fpPlaceModeBtn.classList.add('active');
+    if (mode === 'connect') fpConnectModeBtn.classList.add('active');
+    if (mode === 'entry') fpEntryModeBtn.classList.add('active');
+    updateFpStatus();
+  }
+
+  function updateFpStatus() {
+    if (!fpImg) return;
+    const unplaced = rooms.find((r) => !r.pin);
+    if (fpMode === 'place') {
+      fpStatus.innerHTML = (unplaced ? 'Tap the floor plan to place: ' : 'Tap a pin to move it. All placed — ') + '<span class="accent" id="fpNextRoom">' + (unplaced ? unplaced.name : 'ready to auto-arrange') + '</span>';
+    } else if (fpMode === 'connect') {
+      fpStatus.innerHTML = 'Tap two room pins to connect them with a doorway.';
+    } else if (fpMode === 'entry') {
+      fpStatus.innerHTML = 'Tap the room the walkthrough should start in.';
+    }
+    updateAutoOrderState();
+  }
+
+  function updateAutoOrderState() {
+    const allPlaced = rooms.length > 0 && rooms.every((r) => r.pin);
+    fpAutoOrderBtn.disabled = !allPlaced;
+  }
+
+  function canvasEventToImageCoords(e) {
+    const rect = fpCanvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const scaleX = fpCanvas.width / rect.width;
+    const scaleY = fpCanvas.height / rect.height;
+    return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
+  }
+
+  function findPinNear(pt, thresholdPx) {
+    let closest = null, closestDist = Infinity;
+    rooms.forEach((r) => {
+      if (!r.pin) return;
+      const d = Math.hypot(r.pin.x - pt.x, r.pin.y - pt.y);
+      if (d < closestDist) { closestDist = d; closest = r; }
+    });
+    return closestDist <= thresholdPx ? closest : null;
+  }
+
+  fpCanvas.addEventListener('click', (e) => {
+    if (!fpImg) return;
+    const pt = canvasEventToImageCoords(e);
+    const pinThreshold = fpCanvas.width * 0.03;
+
+    if (fpMode === 'place') {
+      const existing = findPinNear(pt, pinThreshold);
+      if (existing) { existing.pin = pt; drawFloorplan(); return; }
+      const unplaced = rooms.find((r) => !r.pin);
+      if (unplaced) {
+        unplaced.pin = pt;
+        if (!fpEntryId) fpEntryId = unplaced.id;
+        renderRoomList();
+        drawFloorplan();
+        updateFpStatus();
+      }
+    } else if (fpMode === 'connect') {
+      const hit = findPinNear(pt, pinThreshold);
+      if (!hit) return;
+      if (!fpConnectSelection) {
+        fpConnectSelection = hit.id;
+      } else if (fpConnectSelection !== hit.id) {
+        const exists = fpEdges.some(([a, b]) => (a === fpConnectSelection && b === hit.id) || (a === hit.id && b === fpConnectSelection));
+        if (!exists) fpEdges.push([fpConnectSelection, hit.id]);
+        fpConnectSelection = null;
+      } else {
+        fpConnectSelection = null;
+      }
+      drawFloorplan();
+      updateAutoOrderState();
+    } else if (fpMode === 'entry') {
+      const hit = findPinNear(pt, pinThreshold);
+      if (hit) { fpEntryId = hit.id; drawFloorplan(); }
+    }
+  });
+
+  function drawFloorplan() {
+    if (!fpImg) return;
+    fpCtx.clearRect(0, 0, fpCanvas.width, fpCanvas.height);
+    fpCtx.drawImage(fpImg, 0, 0, fpCanvas.width, fpCanvas.height);
+    fpCtx.strokeStyle = '#C9A227';
+    fpCtx.lineWidth = Math.max(2, fpCanvas.width * 0.003);
+    fpEdges.forEach(([aId, bId]) => {
+      const a = rooms.find((r) => r.id === aId);
+      const b = rooms.find((r) => r.id === bId);
+      if (!a || !b || !a.pin || !b.pin) return;
+      fpCtx.beginPath(); fpCtx.moveTo(a.pin.x, a.pin.y); fpCtx.lineTo(b.pin.x, b.pin.y); fpCtx.stroke();
+    });
+    const pinR = Math.max(6, fpCanvas.width * 0.012);
+    rooms.forEach((r) => {
+      if (!r.pin) return;
+      const isEntry = r.id === fpEntryId;
+      const isSelected = r.id === fpConnectSelection;
+      fpCtx.beginPath();
+      fpCtx.arc(r.pin.x, r.pin.y, pinR, 0, Math.PI * 2);
+      fpCtx.fillStyle = isEntry ? '#C9A227' : '#7C9885';
+      fpCtx.fill();
+      fpCtx.lineWidth = Math.max(2, fpCanvas.width * 0.0025);
+      fpCtx.strokeStyle = isSelected ? '#F5F2EA' : '#14181F';
+      fpCtx.stroke();
+      fpCtx.font = Math.max(11, fpCanvas.width * 0.016) + 'px Inter, sans-serif';
+      fpCtx.fillStyle = '#F5F2EA';
+      fpCtx.textAlign = 'center';
+      fpCtx.fillText(r.name, r.pin.x, r.pin.y - pinR - 6);
+    });
+  }
+
+  function dfsOrder(roomsArr, edges, startId) {
+    const adj = new Map(roomsArr.map((r) => [r.id, []]));
+    edges.forEach(([a, b]) => { if (adj.has(a) && adj.has(b)) { adj.get(a).push(b); adj.get(b).push(a); } });
+    const visited = new Set();
+    const order = [];
+    function visit(id) {
+      if (visited.has(id)) return;
+      visited.add(id);
+      order.push(id);
+      const room = roomsArr.find((r) => r.id === id);
+      const neighbors = adj.get(id).filter((n) => !visited.has(n)).sort((n1, n2) => {
+        const r1 = roomsArr.find((r) => r.id === n1), r2 = roomsArr.find((r) => r.id === n2);
+        const d1 = Math.hypot(r1.pin.x - room.pin.x, r1.pin.y - room.pin.y);
+        const d2 = Math.hypot(r2.pin.x - room.pin.x, r2.pin.y - room.pin.y);
+        return d1 - d2;
+      });
+      neighbors.forEach(visit);
+    }
+    visit(startId);
+    roomsArr.forEach((r) => { if (!visited.has(r.id)) visit(r.id); });
+    return order;
+  }
+
+  function nearestNeighborOrder(roomsArr, startId) {
+    const remaining = new Set(roomsArr.map((r) => r.id));
+    const byId = new Map(roomsArr.map((r) => [r.id, r]));
+    const order = [startId];
+    remaining.delete(startId);
+    let current = byId.get(startId);
+    while (remaining.size > 0) {
+      let best = null, bestDist = Infinity;
+      for (const id of remaining) {
+        const cand = byId.get(id);
+        const d = Math.hypot(cand.pin.x - current.pin.x, cand.pin.y - current.pin.y);
+        if (d < bestDist) { bestDist = d; best = id; }
+      }
+      order.push(best); remaining.delete(best); current = byId.get(best);
+    }
+    return order;
+  }
+
+  fpAutoOrderBtn.addEventListener('click', () => {
+    const startId = fpEntryId || rooms[0].id;
+    const orderedIds = fpEdges.length > 0 ? dfsOrder(rooms, fpEdges, startId) : nearestNeighborOrder(rooms, startId);
+    const byId = new Map(rooms.map((r) => [r.id, r]));
+    rooms = orderedIds.map((id) => byId.get(id));
+    renderRoomList();
+  });
+
+  // ================= SETTINGS DISPLAY =================
+  roomDurationInput.addEventListener('input', () => { roomDurationVal.textContent = roomDurationInput.value + 's'; });
+  transDurationInput.addEventListener('input', () => { transDurationVal.textContent = transDurationInput.value + 's'; });
+
+  function updateGenerateState() {
+    generateBtn.disabled = rooms.length === 0 || isGenerating;
+    generateHint.textContent = rooms.length === 0
+      ? 'Add at least one room photo above.'
+      : (rooms.length + ' room' + (rooms.length > 1 ? 's' : '') + ' ready. This calls Higgsfield for each room and transition, so it can take a few minutes and will use your API credits.');
+  }
+
+  // ================= GENERATE (calls backend) =================
+  generateBtn.addEventListener('click', startGenerate);
+  startOverBtn.addEventListener('click', resetOutput);
+
+  function resetOutput() {
+    outputEmpty.style.display = 'block';
+    progressWrap.style.display = 'none';
+    errorWrap.style.display = 'none';
+    resultVideo.style.display = 'none';
+    outputActions.style.display = 'none';
+    isGenerating = false;
+    if (pollTimer) clearInterval(pollTimer);
+    updateGenerateState();
+  }
+
+  async function startGenerate() {
+    if (isGenerating || rooms.length === 0) return;
+    isGenerating = true;
+    updateGenerateState();
+
+    outputEmpty.style.display = 'none';
+    resultVideo.style.display = 'none';
+    outputActions.style.display = 'none';
+    errorWrap.style.display = 'none';
+    progressWrap.style.display = 'block';
+    progressFill.style.width = '0%';
+    progressPct.textContent = '0%';
+    progressStage.textContent = 'Uploading photos…';
+
+    try {
+      const formData = new FormData();
+      rooms.forEach((r) => formData.append('photos', r.file, r.name + '.jpg'));
+      formData.append('meta', JSON.stringify({
+        names: rooms.map((r) => r.name),
+        roomDurationSeconds: parseInt(roomDurationInput.value, 10),
+        transitionDurationSeconds: parseInt(transDurationInput.value, 10),
+        roomPrompt: roomPromptInput.value,
+        transitionPrompt: transPromptInput.value,
+      }));
+
+      const res = await fetch('/api/generate', { method: 'POST', body: formData });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Upload failed' }));
+        throw new Error(err.error || 'Upload failed');
+      }
+      const { jobId } = await res.json();
+      pollStatus(jobId);
+    } catch (err) {
+      showError(err.message);
+    }
+  }
+
+  function pollStatus(jobId) {
+    pollTimer = setInterval(async () => {
+      try {
+        const res = await fetch('/api/status/' + jobId);
+        if (!res.ok) throw new Error('Lost track of the job status');
+        const job = await res.json();
+
+        progressFill.style.width = (job.progress || 0) + '%';
+        progressPct.textContent = (job.progress || 0) + '%';
+        progressStage.textContent = job.stage || 'Working…';
+
+        if (job.status === 'done') {
+          clearInterval(pollTimer);
+          progressWrap.style.display = 'none';
+          resultVideo.src = job.videoUrl;
+          resultVideo.style.display = 'block';
+          downloadBtn.href = job.videoUrl;
+          outputActions.style.display = 'flex';
+          isGenerating = false;
+          updateGenerateState();
+        } else if (job.status === 'error') {
+          clearInterval(pollTimer);
+          showError(job.error || 'Generation failed');
+        }
+      } catch (err) {
+        clearInterval(pollTimer);
+        showError(err.message);
+      }
+    }, 3000);
+  }
+
+  function showError(message) {
+    progressWrap.style.display = 'none';
+    errorWrap.style.display = 'block';
+    errorWrap.textContent = message;
+    isGenerating = false;
+    updateGenerateState();
+  }
+
+  updateGenerateState();
+})();
+</script>
+</body>
+</html>
