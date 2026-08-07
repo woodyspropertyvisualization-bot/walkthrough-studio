@@ -265,11 +265,21 @@
     const files = Array.from(fileList).filter((f) => f.type.startsWith('image/'));
     files.forEach((file) => {
       const url = URL.createObjectURL(file);
-      rooms.push({ id: nextId++, url, file, name: file.name.replace(/\.[^.]+$/, ''), pin: null });
+      rooms.push({ id: nextId++, urls: [url], files: [file], name: file.name.replace(/\.[^.]+$/, ''), pin: null });
     });
     renderRoomList();
     updateVisibleSections();
     updateGenerateState();
+  }
+
+  function addAngleToRoom(roomIndex, fileList) {
+    const files = Array.from(fileList).filter((f) => f.type.startsWith('image/'));
+    const room = rooms[roomIndex];
+    files.forEach((file) => {
+      room.urls.push(URL.createObjectURL(file));
+      room.files.push(file);
+    });
+    renderRoomList();
   }
 
   function updateVisibleSections() {
@@ -286,10 +296,21 @@
     rooms.forEach((room, i) => {
       const card = document.createElement('div');
       card.className = 'room-card';
-      const thumb = document.createElement('img');
-      thumb.className = 'room-thumb';
-      thumb.src = room.url;
-      card.appendChild(thumb);
+
+      const thumbStrip = document.createElement('div');
+      thumbStrip.style.display = 'flex';
+      thumbStrip.style.gap = '2px';
+      thumbStrip.style.height = '84px';
+      thumbStrip.style.overflow = 'hidden';
+      room.urls.forEach((url) => {
+        const thumb = document.createElement('img');
+        thumb.className = 'room-thumb';
+        thumb.style.flex = '1';
+        thumb.style.height = '84px';
+        thumb.src = url;
+        thumbStrip.appendChild(thumb);
+      });
+      card.appendChild(thumbStrip);
 
       const meta = document.createElement('div');
       meta.className = 'room-meta';
@@ -305,6 +326,33 @@
       nameInput.addEventListener('input', () => { room.name = nameInput.value; updateFpStatus(); });
       topRow.appendChild(nameInput);
       meta.appendChild(topRow);
+
+      const angleRow = document.createElement('div');
+      angleRow.style.display = 'flex';
+      angleRow.style.alignItems = 'center';
+      angleRow.style.justifyContent = 'space-between';
+      angleRow.style.marginBottom = '4px';
+
+      const angleLabel = document.createElement('span');
+      angleLabel.className = 'pin-badge';
+      angleLabel.style.color = 'var(--text-faint)';
+      angleLabel.textContent = room.urls.length > 1 ? room.urls.length + ' angles' : '';
+      angleRow.appendChild(angleLabel);
+
+      const addAngleLabel = document.createElement('label');
+      addAngleLabel.style.fontSize = '10px';
+      addAngleLabel.style.color = 'var(--brass)';
+      addAngleLabel.style.cursor = 'pointer';
+      addAngleLabel.textContent = '+ add angle';
+      const addAngleInput = document.createElement('input');
+      addAngleInput.type = 'file';
+      addAngleInput.accept = 'image/*';
+      addAngleInput.multiple = true;
+      addAngleInput.style.display = 'none';
+      addAngleInput.addEventListener('change', (e) => addAngleToRoom(i, e.target.files));
+      addAngleLabel.appendChild(addAngleInput);
+      angleRow.appendChild(addAngleLabel);
+      meta.appendChild(angleRow);
 
       const bottomRow = document.createElement('div');
       bottomRow.style.display = 'flex';
@@ -599,9 +647,14 @@
 
     try {
       const formData = new FormData();
-      rooms.forEach((r) => formData.append('photos', r.file, r.name + '.jpg'));
+      rooms.forEach((r) => {
+        r.files.forEach((file, angleIdx) => {
+          formData.append('photos', file, r.name + '_' + angleIdx + '.jpg');
+        });
+      });
       formData.append('meta', JSON.stringify({
         names: rooms.map((r) => r.name),
+        photoCounts: rooms.map((r) => r.files.length),
         roomDurationSeconds: parseInt(roomDurationInput.value, 10),
         transitionDurationSeconds: parseInt(transDurationInput.value, 10),
         roomPrompt: roomPromptInput.value,
@@ -621,11 +674,15 @@
   }
 
   function pollStatus(jobId) {
+    let consecutiveFailures = 0;
+    const MAX_CONSECUTIVE_FAILURES = 6; // tolerate ~18s of dropped connectivity before giving up
+
     pollTimer = setInterval(async () => {
       try {
         const res = await fetch('/api/status/' + jobId);
         if (!res.ok) throw new Error('Lost track of the job status');
         const job = await res.json();
+        consecutiveFailures = 0; // reset - we're connected again
 
         progressFill.style.width = (job.progress || 0) + '%';
         progressPct.textContent = (job.progress || 0) + '%';
@@ -645,8 +702,13 @@
           showError(job.error || 'Generation failed');
         }
       } catch (err) {
-        clearInterval(pollTimer);
-        showError(err.message);
+        consecutiveFailures += 1;
+        progressStage.textContent = 'Connection interrupted, retrying…';
+        if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+          clearInterval(pollTimer);
+          showError('Lost connection to the server while checking progress. The video may still be generating on the server - check back by refreshing, or try again.');
+        }
+        // otherwise: just skip this tick and let the interval try again
       }
     }, 3000);
   }
