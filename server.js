@@ -8,9 +8,6 @@ const { createJob, getJob, runPipeline, GENERATED_DIR } = require('./lib/pipelin
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-// This must be the server's real public URL once deployed (e.g.
-// https://your-app.onrender.com) - Higgsfield needs to fetch images from
-// this server over the internet, so it can't be localhost.
 const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || `http://localhost:${PORT}`;
 
 const UPLOADS_DIR = path.join(__dirname, 'uploads');
@@ -32,24 +29,40 @@ app.get('/health', (req, res) => res.json({ ok: true }));
 
 /**
  * Accepts:
- *  - photos: room photo files (multipart), in final walkthrough order
- *  - meta: JSON string, array of { name } aligned with the photo order,
- *    plus optional { roomDurationSeconds, transitionDurationSeconds, motionPreset }
+ *  - photos: room photo files (multipart), FLATTENED in room order (all of
+ *    room 0's angle photos first, then all of room 1's, etc.)
+ *  - meta: JSON string with:
+ *      - names: [name, ...] aligned with rooms (not photos)
+ *      - photoCounts: [count, ...] aligned with rooms - how many of the
+ *        flattened photos belong to each room, in order. Used to regroup
+ *        the flat photo list back into per-room angle groups.
+ *      - roomDurationSeconds, transitionDurationSeconds, roomPrompt,
+ *        transitionPrompt (all optional)
  */
-app.post('/api/generate', upload.array('photos', 30), (req, res) => {
+app.post('/api/generate', upload.array('photos', 60), (req, res) => {
   try {
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ error: 'No photos uploaded' });
     }
     const meta = JSON.parse(req.body.meta || '{}');
-    const names = meta.names || req.files.map((f, i) => `Room ${i + 1}`);
+    const names = meta.names || [];
+    const photoCounts = meta.photoCounts || req.files.map(() => 1); // default: 1 photo per room if not specified
 
-    const rooms = req.files.map((file, i) => ({
-      id: i,
-      name: names[i] || `Room ${i + 1}`,
-      localImagePath: file.path,
-      publicImageUrl: `${PUBLIC_BASE_URL}/uploads/${path.basename(file.path)}`,
-    }));
+    if (photoCounts.reduce((a, b) => a + b, 0) !== req.files.length) {
+      return res.status(400).json({ error: 'photoCounts does not match the number of uploaded photos' });
+    }
+
+    const rooms = [];
+    let fileCursor = 0;
+    photoCounts.forEach((count, roomIdx) => {
+      const roomFiles = req.files.slice(fileCursor, fileCursor + count);
+      fileCursor += count;
+      rooms.push({
+        id: roomIdx,
+        name: names[roomIdx] || `Room ${roomIdx + 1}`,
+        publicImageUrls: roomFiles.map((f) => `${PUBLIC_BASE_URL}/uploads/${path.basename(f.path)}`),
+      });
+    });
 
     const jobId = createJob();
 
@@ -57,7 +70,7 @@ app.post('/api/generate', upload.array('photos', 30), (req, res) => {
       publicBaseUrl: PUBLIC_BASE_URL,
       roomDurationSeconds: meta.roomDurationSeconds,
       transitionDurationSeconds: meta.transitionDurationSeconds,
-      motionPreset: meta.motionPreset,
+      roomPrompt: meta.roomPrompt,
     });
 
     res.json({ jobId });
@@ -76,7 +89,7 @@ app.get('/api/status/:jobId', (req, res) => {
 app.listen(PORT, () => {
   console.log(`Walkthrough backend listening on port ${PORT}`);
   console.log(`Public base URL: ${PUBLIC_BASE_URL}`);
-  if (!process.env.HIGGSFIELD_API_KEY) {
-    console.warn('WARNING: HIGGSFIELD_API_KEY is not set in the environment.');
+  if (!process.env.HIGGSFIELD_API_KEY || !process.env.HIGGSFIELD_API_SECRET) {
+    console.warn('WARNING: HIGGSFIELD_API_KEY and/or HIGGSFIELD_API_SECRET is not set in the environment.');
   }
 });
